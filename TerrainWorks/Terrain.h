@@ -11,7 +11,8 @@ class Terrain
 	GLuint _size;
 	float * heightmap;
 
-	GLuint vbo[3];
+	GLuint vao[2];
+	GLuint vbo[5];
 	GLuint ebo;
 
 	GLuint * indexicate();
@@ -21,9 +22,7 @@ public:
 	~Terrain();
 
 	float getHeight(float _x, float _y);
-	void bindVboGrid();
-	void bindVboHeightmap();
-	void bindVboNormals();
-	void bindEbo();
+	void drawTerrain() const;
+	void Terrain::drawWater() const;
 };
 

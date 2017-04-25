@@ -119,6 +119,46 @@ __global__ void cuda_MapNormals(float * heightmap, float * normalmap, int size)
 	}
 }
 
+__global__ void cuda_MapNormals(float * heightmap, float * watermap, float * normalmap, int size)
+{
+	int ind = blockIdx.x * blockDim.x + threadIdx.x;
+	if (ind < size*size)
+	{
+		float x = ind % size, y = ind / size;
+		bool neighbours[4];
+		neighbours[0] = y < size - 1;
+		neighbours[1] = y > 0;
+		neighbours[2] = x < size - 1;
+		neighbours[3] = x > 0;
+
+		float nh[4];
+
+		if (neighbours[0])
+			nh[0] = heightmap[ind + size] + watermap[ind + size];
+		else
+			nh[0] = heightmap[ind] + watermap[ind];
+		if (neighbours[1])
+			nh[1] = heightmap[ind - size] + watermap[ind - size];
+		else
+			nh[1] = heightmap[ind] + watermap[ind];
+		if (neighbours[2])
+			nh[2] = heightmap[ind + 1] + watermap[ind + 1];
+		else
+			nh[2] = heightmap[ind] + watermap[ind];
+		if (neighbours[3])
+			nh[3] = heightmap[ind - 1] + watermap[ind - 1];
+		else
+			nh[3] = heightmap[ind] + watermap[ind];
+
+		vec3 n = normalize(vec3((nh[2] - nh[3]) / 2, 1, (nh[0] - nh[1]) / 2));
+
+		normalmap[ind * 3] = n.x;
+		normalmap[ind * 3 + 1] = n.y;
+		normalmap[ind * 3 + 2] = n.z;
+	}
+}
+
+
 __global__ void cuda_elevate(float *heightmap, float offsetX, float offsetY, float centerX, float centerY, float outerRadius, float innerRadius, float factor, int innerSize, int size)
 {
 	int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -246,21 +286,33 @@ CudaTools::CudaTools(Terrain &terrain)
 	cudaGraphicsGLRegisterBuffer(&cuda_vb_resources[0], terrain.vbo[1], cudaGraphicsMapFlagsNone); // heightmap
 	cudaGraphicsGLRegisterBuffer(&cuda_vb_resources[1], terrain.vbo[2], cudaGraphicsMapFlagsNone); // normals
 
-	size_t s[2];
+	cudaGraphicsGLRegisterBuffer(&cuda_vb_resources[2], terrain.vbo[3], cudaGraphicsMapFlagsNone); // w_heightmap
+	cudaGraphicsGLRegisterBuffer(&cuda_vb_resources[3], terrain.vbo[4], cudaGraphicsMapFlagsNone); // w_normals
+
+	size_t s[4];
 	s[0] = sizeof(GLfloat) * _size*_size;
 	s[1] = sizeof(GLfloat) * _size*_size * 3;
 
+	s[2] = sizeof(GLfloat) * _size*_size;
+	s[3] = sizeof(GLfloat) * _size*_size * 3;
 
-	cudaGraphicsMapResources(2, cuda_vb_resources, 0);
+
+	cudaGraphicsMapResources(4, cuda_vb_resources, 0);
 
 	cudaGraphicsResourceGetMappedPointer((void**)&d_heightmap, &s[0], cuda_vb_resources[0]);
 	cudaGraphicsResourceGetMappedPointer((void**)&d_normals, &s[1], cuda_vb_resources[1]);
 
-	cudaGraphicsUnmapResources(2, cuda_vb_resources, 0);
+	cudaGraphicsResourceGetMappedPointer((void**)&d_watermap, &s[2], cuda_vb_resources[2]);
+	cudaGraphicsResourceGetMappedPointer((void**)&d_waterNormals, &s[3], cuda_vb_resources[3]);
+
+	cudaGraphicsUnmapResources(4, cuda_vb_resources, 0);
 
 	cudaMalloc((void**)&d_heightBuffer, sizeof(float) * _size * _size);
+	cudaMalloc((void**)&d_waterBuffer, sizeof(float) * _size * _size);
+	cudaMalloc((void**)&d_sediment, sizeof(float) * _size * _size);
 
-	setHeight(0.0f);
+	setHeight(0.0f, d_heightmap);
+	setHeight(10.0f, d_watermap);
 	fetchHeight();
 	mapNormals();
 }
@@ -273,9 +325,9 @@ CudaTools::~CudaTools()
 	cudaFree(d_heightBuffer);
 }
 
-void CudaTools::setHeight(float height)
+void CudaTools::setHeight(float height, float* arr)
 {
-	cuda_initArray << <(N + M - 1) / M, M >> > ((float*)d_heightmap, height, _size);
+	cuda_initArray << <(N + M - 1) / M, M >> > ((float*)arr, height, _size);
 
 	cudaDeviceSynchronize();
 }
@@ -297,6 +349,9 @@ void CudaTools::PerlinNoise(float frequency, float frequencyDivider, float ampli
 void CudaTools::mapNormals()
 {
 	cuda_MapNormals << < (N + M - 1) / M, M >> >(d_heightmap, d_normals, _size);
+	cudaDeviceSynchronize();
+
+	cuda_MapNormals << < (N + M - 1) / M, M >> >(d_heightmap, d_watermap, d_waterNormals, _size);
 	cudaDeviceSynchronize();
 
 }

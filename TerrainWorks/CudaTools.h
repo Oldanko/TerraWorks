@@ -14,15 +14,21 @@ class CudaTools
 	float * d_heightBuffer;
 	float * d_normals;
 
+	float * d_watermap;
+	float * d_waterBuffer;
+	float * d_waterNormals;
+
+	float * d_sediment;
+ 
 	GLuint N;
 	GLuint M;
 
-	struct cudaGraphicsResource *cuda_vb_resources[2];
+	struct cudaGraphicsResource *cuda_vb_resources[4];
 public:
 	CudaTools(Terrain &terrain);
 	~CudaTools();
 
-	void setHeight(float height);
+	void setHeight(float height, float* arr);
 	void square();
 	void PerlinNoise(float frequency, float frequencyDivider, float amplitude, float amplitudeDivider, int iterations);
 	

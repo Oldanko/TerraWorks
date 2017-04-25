@@ -176,6 +176,8 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <None Include="heightFragment.shader" />
     <None Include="heightVertex.shader" />
+    <None Include="waterFragment.shader" />
+    <None Include="waterVertex.shader" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -8,7 +8,7 @@ float linearInterpolaton(float a, float b, float x)
 Terrain::Terrain(GLuint size)
 {
 	_size = size;
-	glGenBuffers(3, vbo);
+	glGenBuffers(5, vbo);
 
 	GLfloat * grid = getGrid();
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
@@ -21,17 +21,66 @@ Terrain::Terrain(GLuint size)
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
 	glBufferData(GL_ARRAY_BUFFER, size * size * 3 * sizeof(GLfloat), nullptr, GL_STATIC_DRAW); // normals
 
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[3]);
+	glBufferData(GL_ARRAY_BUFFER, size * size * sizeof(GLfloat), nullptr, GL_DYNAMIC_COPY); // watermap
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[4]);
+	glBufferData(GL_ARRAY_BUFFER, size * size * 3 * sizeof(GLfloat), nullptr, GL_STATIC_DRAW); // waternormals
+
 	glGenBuffers(1, &ebo);
 	GLuint * indices = indexicate();
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, (size - 1)*(size - 1) * 6 * sizeof(GLuint), indices, GL_STATIC_DRAW);
 	delete[] indices;
 
+	glGenVertexArrays(2, vao);
+	glBindVertexArray(vao[0]);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(GLfloat), (GLvoid*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+
+
+	glBindVertexArray(vao[1]);
+
+
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[1]);
+	glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(GLfloat), (GLvoid*)0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[3]);
+	glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(GLfloat), (GLvoid*)0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[4]);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
 	heightmap = new float[_size*_size];
 }
 
 Terrain::~Terrain()
 {
+	glDeleteVertexArrays(2, vao);
 	glDeleteBuffers(3, vbo);
 	glDeleteBuffers(1, &ebo);
 
@@ -100,7 +149,15 @@ float Terrain::getHeight(float x, float y)
 	return heightmap[target];
 }
 
-void Terrain::bindVboGrid() { glBindBuffer(GL_ARRAY_BUFFER, vbo[0]); }
-void Terrain::bindVboHeightmap() { glBindBuffer(GL_ARRAY_BUFFER, vbo[1]); }
-void Terrain::bindVboNormals() { glBindBuffer(GL_ARRAY_BUFFER, vbo[2]); }
-void Terrain::bindEbo() { glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo); }
+
+void Terrain::drawTerrain() const
+{
+	glBindVertexArray(vao[0]);
+	glDrawElements(GL_TRIANGLES, (_size - 1)*(_size - 1) * 6, GL_UNSIGNED_INT, 0);
+}
+
+void Terrain::drawWater() const
+{
+	glBindVertexArray(vao[1]);
+	glDrawElements(GL_TRIANGLES, (_size - 1)*(_size - 1) * 6, GL_UNSIGNED_INT, 0);
+}

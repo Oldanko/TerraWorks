@@ -82,28 +82,10 @@ int main()
 		return vec3(v.x, v.z, terrain.getHeight(v.x, v.z));
 	};
 
-	GLuint program = LoadShaders("heightVertex.shader", "heightFragment.shader");
+	GLuint program[2];
+	program[0] = LoadShaders("heightVertex.shader", "heightFragment.shader");
+	program[1] = LoadShaders("waterVertex.shader", "waterFragment.shader");
 
-	GLuint vao;
-
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	terrain.bindVboHeightmap();
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, sizeof(GLfloat), (GLvoid*)0);
-	terrain.bindVboGrid();
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(GLfloat), (GLvoid*)0);
-	terrain.bindVboNormals();
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-
-	terrain.bindEbo();
-
-	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	cudaTools.PerlinNoise(128, 2, 0.5, 2, 5);
 	cudaTools.square();
@@ -130,16 +112,20 @@ int main()
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		mat4 MVP = projection * camera.matrix();
-		glUseProgram(program);
+		glUseProgram(program[0]);
 		glUniformMatrix4fv(0, 1, GL_FALSE, &MVP[0][0]);
 		glUniform1f(1, H);
 		glUniform2f(2, target.x, target.y);
 		glUniform1f(3, current->outerRadius());
 		glUniform1f(4, current->innerRadius());
 
-		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, (size - 1)*(size - 1) * 6, GL_UNSIGNED_INT, 0);
+		terrain.drawTerrain();
 
+		glUseProgram(program[1]);
+		glUniformMatrix4fv(0, 1, GL_FALSE, &MVP[0][0]);
+		glUniform1f(1, H);
+
+		terrain.drawWater();
 		
 
 		target = pickHeight((float)Controls::x(), (float)Controls::y());
@@ -211,12 +197,10 @@ int main()
 		}
 		else
 			isKPressed = false;
-
-
 	}
 
-	glDeleteVertexArrays(1, &vao);
-	glDeleteProgram(program);
+	glDeleteProgram(program[0]);
+	glDeleteProgram(program[1]);
 
 	return 0;
 }
