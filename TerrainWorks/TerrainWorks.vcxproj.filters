@@ -1,0 +1,58 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Classes">
+      <UniqueIdentifier>{1eda6ae2-7cdf-4b10-afa2-69b0ed7c1c0b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{c4d7ac44-a50b-4e37-9e3f-ff46ccef951f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Window.cpp">
+      <Filter>Classes</Filter>
+    </ClCompile>
+    <ClCompile Include="kernel.cpp" />
+    <ClCompile Include="Terrain.cpp">
+      <Filter>Classes</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Classes</Filter>
+    </ClCompile>
+    <ClCompile Include="Controls.cpp">
+      <Filter>Classes</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Window.h">
+      <Filter>Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="CudaTools.h">
+      <Filter>Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="Terrain.h">
+      <Filter>Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="Controls.h">
+      <Filter>Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="heightFragment.shader">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="heightVertex.shader">
+      <Filter>Shaders</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="CudaTools.cu">
+      <Filter>Classes</Filter>
+    </CudaCompile>
+  </ItemGroup>
+</Project>
