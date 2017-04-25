@@ -140,7 +140,7 @@ __global__ void cuda_elevate(float *heightmap, float offsetX, float offsetY, flo
 			heightmap[x*size + y] += factor;
 			return;
 		}
-		heightmap[x*size + y] += factor * (outerRadius - dist) / (outerRadius - innerRadius);
+		heightmap[x*size + y] += factor * cosineInterpolate(0, 1, (outerRadius - dist) / (outerRadius - innerRadius));
 	}
 }
 
@@ -156,21 +156,28 @@ __global__ void cuda_averagize(float *heightmap, float *heightBuffer, float offs
 		if (x >= size || y >= size)
 			return;
 
+		int here = x*size + y;
+
 		float dist = sqrtf((centerX - x)*(centerX - x) + (centerY - y)*(centerY - y));
 
 		if (dist > outerRadius)
 			return;
 
-		float deltaHeight = (heightmap[ind - 1] + heightmap[ind + 1] + heightmap[ind - size] + heightmap[ind + size]) / 4 - heightmap[ind];
+		float avg = (heightmap[here + 1] + heightmap[here - 1] + heightmap[here - size] + heightmap[here + size]) / 4;
 
 		if (dist < innerRadius)
 		{
-			heightmap[x*size + y] += factor * deltaHeight;
+			heightBuffer[here] = heightmap[here] * (1-factor) + avg * factor;
 			return;
 		}
 		ind = x*size + y;
 
-		heightBuffer[x*size + y] = factor * deltaHeight * (outerRadius - dist) / (outerRadius - innerRadius);
+		if (outerRadius - innerRadius == 0)
+			return;
+
+		float fade = factor * cosineInterpolate(0, 1, (outerRadius - dist) / (outerRadius - innerRadius));
+
+		heightBuffer[here] = heightmap[here] * (1-fade) + avg * fade;
 	}
 }
 
@@ -202,9 +209,11 @@ __global__ void cuda_plateao(float *heightmap, float height, float offsetX, floa
 			heightmap[x*size + y] += delta;
 			return;
 		}
-		float fade = (outerRadius - dist) / (outerRadius - innerRadius);
 
-		heightmap[x*size + y] += delta * fade;
+		if (outerRadius - innerRadius == 0)
+			return;
+
+		heightmap[x*size + y] += delta * cosineInterpolate(0, 1, (outerRadius - dist) / (outerRadius - innerRadius));
 	}
 }
 
@@ -213,7 +222,8 @@ __global__ void cuda_addBuffer(float *heightmap, float *heightBuffer, int size)
 	int ind = blockIdx.x * blockDim.x + threadIdx.x;
 	if (ind < size*size)
 	{
-		heightmap[ind] += heightBuffer[ind];
+		if(heightBuffer[ind] == 0) return;
+		heightmap[ind] = heightBuffer[ind];
 		heightBuffer[ind] = 0;
 	}
 }
@@ -317,7 +327,8 @@ void CudaTools::averagize(const vec2 &position, float outerRadius, float innerRa
 	int size = ceil(2 * outerRadius) + 1;
 
 	int n = size*size;
-
+	cuda_initArray << <(N + M - 1) / M, M >> > (d_heightBuffer, 0, _size);
+	cudaDeviceSynchronize();
 	cuda_averagize << <(n + M - 1) / M, M >> >(d_heightmap, d_heightBuffer, _x, _y, position.x, position.y, outerRadius, innerRadius, factor, size, _size);
 	cudaDeviceSynchronize();
 	cuda_addBuffer << <(N + M - 1) / M, M >> >(d_heightmap, d_heightBuffer, _size);

@@ -22,7 +22,9 @@
     <ClCompile Include="Controls.cpp">
       <Filter>Classes</Filter>
     </ClCompile>
-    <ClCompile Include="Tools.cpp" />
+    <ClCompile Include="Tools.cpp">
+      <Filter>Classes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Window.h">
@@ -40,7 +42,9 @@
     <ClInclude Include="Controls.h">
       <Filter>Classes</Filter>
     </ClInclude>
-    <ClInclude Include="Tools.h" />
+    <ClInclude Include="Tools.h">
+      <Filter>Classes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="heightFragment.shader">

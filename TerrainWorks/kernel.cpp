@@ -20,11 +20,13 @@
 #include "Camera.h"
 #include "Terrain.h"
 #include "CudaTools.h"
+#include "Tools.h"
 
 using namespace glm;
 
 GLuint LoadShaders(const char * vertex_file_path, const char * fragment_file_path);
 
+GLbyte scroll = 0;
 
 
 int main()
@@ -46,6 +48,12 @@ int main()
 
 	Terrain terrain(size);
 	CudaTools cudaTools(terrain);
+
+	ToolElevate elevate(&cudaTools);
+	ToolPlateau plateau(&cudaTools);
+	ToolAveragize averagize(&cudaTools);
+			
+	Tool * current = &elevate;
 
 
 	auto pickHeight = [&terrain, &projection, &camera, &width, &height, &H](float x, float y)
@@ -104,15 +112,15 @@ int main()
 	
 	vec3 target;
 
-	bool isPressed = false;
+	bool isKPressed = false;
+
+	glfwSetScrollCallback(window.ptr(), [](GLFWwindow *, double, double y) { scroll = y; });
 
 	long long frame = 0;
 	while (window.update())
 	{
 		Controls::update();
 		camera.update();
-
-		target = pickHeight((float)Controls::x(), (float)Controls::y());
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -126,37 +134,83 @@ int main()
 		glUniformMatrix4fv(0, 1, GL_FALSE, &MVP[0][0]);
 		glUniform1f(1, H);
 		glUniform2f(2, target.x, target.y);
-		glUniform1f(3, 10.0f);
+		glUniform1f(3, current->outerRadius());
+		glUniform1f(4, current->innerRadius());
 
 		glBindVertexArray(vao);
 		glDrawElements(GL_TRIANGLES, (size - 1)*(size - 1) * 6, GL_UNSIGNED_INT, 0);
 
+		
+
+		target = pickHeight((float)Controls::x(), (float)Controls::y());
+
 		if (glfwGetMouseButton(window.ptr(), GLFW_MOUSE_BUTTON_LEFT))
 		{
-			cudaTools.elevate(vec2(target.x, target.y), 50.0f, 5.0f, 0.005f);
-			cudaTools.mapNormals();
-			cudaTools.fetchHeight();
+			current->apply(target);
 		}
-		if (glfwGetMouseButton(window.ptr(), GLFW_MOUSE_BUTTON_RIGHT))
+
+
+		if (glfwGetKey(window.ptr(), GLFW_KEY_KP_ADD))
+			elevate.factorPositive();
+		if (glfwGetKey(window.ptr(), GLFW_KEY_KP_SUBTRACT))
+			elevate.factorNegative();
+
+
+
+		if (glfwGetKey(window.ptr(), GLFW_KEY_1))
+			current = &elevate;
+
+		if (glfwGetKey(window.ptr(), GLFW_KEY_2))
+			current = &plateau;
+
+		if (glfwGetKey(window.ptr(), GLFW_KEY_3))
+			current = &averagize;
+
+		GLubyte AltCtrl = (glfwGetKey(window.ptr(), GLFW_KEY_LEFT_ALT) ? 0b00000001 : 0) | (glfwGetKey(window.ptr(), GLFW_KEY_LEFT_CONTROL) ? 0b00000010 : 0);
+
+		switch (scroll)
 		{
-			//terrain.averagize(vec2(target.x, target.y), 5.0f, 0.5f);
-			cudaTools.plateau(target, 20.0f, 1.0f, 0.05f, true, true);
-			cudaTools.mapNormals();
-			cudaTools.fetchHeight();
+		case 1:
+			if (!AltCtrl)
+				current->increaseFactor();
+			else
+			{
+				if (AltCtrl & 1)
+					current->increaseInner();
+				if (AltCtrl & 2)
+					current->increaseOuter();
+			}
+			break;
+		case -1:
+			if (!AltCtrl)
+				current->decreaseFactor();
+			else
+			{
+				if (AltCtrl & 1)
+					current->decreaseInner();
+				if (AltCtrl & 2)
+					current->decreaseOuter();
+			}
+		default:
+			break;
 		}
+		scroll = 0;
+
+
 		if (glfwGetKey(window.ptr(), GLFW_KEY_K))
 		{
-			if (!isPressed)
+			if (!isKPressed)
 			{
-				isPressed = true;
-				auto pos = camera.position();
+				isKPressed = true;
+				/*auto pos = camera.position();
 				auto angX = camera.angleX();
 				auto angY = camera.angleY();
-				std::cout << pos.x << " " << pos.y << " " << pos.z << " " << angX << " " << angY << "\n";
+				std::cout << pos.x << " " << pos.y << " " << pos.z << " " << angX << " " << angY << "\n";*/
+				current->printFactor();
 			}
 		}
 		else
-			isPressed = false;
+			isKPressed = false;
 
 
 	}
