@@ -15,20 +15,23 @@ class CudaTools
 	float * d_normals;
 
 	float * d_watermap;
-	float * d_waterBuffer;
+	float * d_outflow;
 	float * d_waterNormals;
 
+	float * d_velocity;
 	float * d_sediment;
  
 	GLuint N;
 	GLuint M;
+
+	float h = 64.0f;
 
 	struct cudaGraphicsResource *cuda_vb_resources[4];
 public:
 	CudaTools(Terrain &terrain);
 	~CudaTools();
 
-	void setHeight(float height, float* arr);
+	void setHeight(float height, float* arr, float size);
 	void square();
 	void PerlinNoise(float frequency, float frequencyDivider, float amplitude, float amplitudeDivider, int iterations);
 	
@@ -38,5 +41,8 @@ public:
 	void elevate(const vec2 &position, float outerRadius, float innerRadius, float factor);
 	void averagize(const vec2& position, float outerRadius, float innerRadius, float factor);
 	void plateau(const vec3 &position, float outerRadius, float innerRadius, float factor, bool above, bool below);
+	void waterFlow(float H);
+	void addWater(float factor);
+	void raindrop(const vec2& position, float outerRadius, float innerRadius, float factor);
 };
 

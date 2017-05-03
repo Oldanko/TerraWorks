@@ -14,7 +14,7 @@ out float Height;
 void main()
 {
 	gl_Position = MVP * vec4(position.x, height*H, position.y, 1);
-	Normal = vec3(normal.x*H, normal.y, normal.z*H); //vec3(1.0);//normal;
+	Normal = vec3(normal.x, normal.y, normal.z); //vec3(1.0);//normal;
 	Height = height;
 	Position = position;
 }

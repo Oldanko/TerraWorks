@@ -12,5 +12,5 @@ void main()
 {	
 
 	float diff = max(dot(normalize(Normal), sunVec), 0.0);
-	outColor = vec4(vec3(0.0, 0.0, 1.0)*diff*0.9, 1.0f);
+	outColor = vec4(vec3(0.0, 0.0, 1.0)*diff, 1.0f);
 }

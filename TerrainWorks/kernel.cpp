@@ -37,7 +37,7 @@ int main()
 	float FoV = 70.0f;
 	float near = 0.1f;
 	float far = 10000.0f;
-	float H = 32.0f;
+	float H = 64.0f;
 	mat4 projection = perspective(radians(FoV), (float)width / height, near, far);
 	
 	Camera camera(0.0f, 115.0f, 0.0f, 0.015f, 0.445f);
@@ -103,6 +103,8 @@ int main()
 	{
 		Controls::update();
 		camera.update();
+		cudaTools.waterFlow(H);
+		cudaTools.mapNormals();
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -116,74 +118,96 @@ int main()
 		glUniformMatrix4fv(0, 1, GL_FALSE, &MVP[0][0]);
 		glUniform1f(1, H);
 		glUniform2f(2, target.x, target.y);
-		glUniform1f(3, current->outerRadius());
-		glUniform1f(4, current->innerRadius());
+		if (current)
+		{
+			glUniform1f(3, current->outerRadius());
+			glUniform1f(4, current->innerRadius());
+		}
 
 		terrain.drawTerrain();
 
-		glUseProgram(program[1]);
-		glUniformMatrix4fv(0, 1, GL_FALSE, &MVP[0][0]);
-		glUniform1f(1, H);
+		if (glfwGetKey(window.ptr(), GLFW_KEY_SPACE) == GLFW_RELEASE)
+		{
 
-		terrain.drawWater();
-		
+			glUseProgram(program[1]);
+			glUniformMatrix4fv(0, 1, GL_FALSE, &MVP[0][0]);
+			glUniform1f(1, H);
+
+			terrain.drawWater();
+		}
+		if (glfwGetKey(window.ptr(), GLFW_KEY_R) == GLFW_PRESS)
+			cudaTools.addWater(0.005f);
+		if (glfwGetKey(window.ptr(), GLFW_KEY_E) == GLFW_PRESS)
+			cudaTools.addWater(-1000.0f);
+		cudaTools.addWater(-0.0005f);
+
+
+
+
 
 		target = pickHeight((float)Controls::x(), (float)Controls::y());
 
 		if (glfwGetMouseButton(window.ptr(), GLFW_MOUSE_BUTTON_LEFT))
 		{
-			current->apply(target);
+			if (current)
+				current->apply(target);
+			else
+				cudaTools.raindrop(vec2(target), 5, 2, 0.2f);
 		}
 
 
-		if (glfwGetKey(window.ptr(), GLFW_KEY_KP_ADD))
+		if (glfwGetKey(window.ptr(), GLFW_KEY_KP_ADD) == GLFW_PRESS)
 			elevate.factorPositive();
-		if (glfwGetKey(window.ptr(), GLFW_KEY_KP_SUBTRACT))
+		if (glfwGetKey(window.ptr(), GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS)
 			elevate.factorNegative();
 
 
 
-		if (glfwGetKey(window.ptr(), GLFW_KEY_1))
+		if (glfwGetKey(window.ptr(), GLFW_KEY_1) == GLFW_PRESS)
 			current = &elevate;
 
-		if (glfwGetKey(window.ptr(), GLFW_KEY_2))
+		if (glfwGetKey(window.ptr(), GLFW_KEY_2) == GLFW_PRESS)
 			current = &plateau;
 
-		if (glfwGetKey(window.ptr(), GLFW_KEY_3))
+		if (glfwGetKey(window.ptr(), GLFW_KEY_3) == GLFW_PRESS)
 			current = &averagize;
 
-		GLubyte AltCtrl = (glfwGetKey(window.ptr(), GLFW_KEY_LEFT_ALT) ? 0b00000001 : 0) | (glfwGetKey(window.ptr(), GLFW_KEY_LEFT_CONTROL) ? 0b00000010 : 0);
+		if (glfwGetKey(window.ptr(), GLFW_KEY_4) == GLFW_PRESS)
+			current = nullptr;
 
-		switch (scroll)
-		{
-		case 1:
-			if (!AltCtrl)
-				current->increaseFactor();
-			else
+		GLubyte AltCtrl = (glfwGetKey(window.ptr(), GLFW_KEY_LEFT_ALT) == GLFW_PRESS ? 0b00000001 : 0) | (glfwGetKey(window.ptr(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ? 0b00000010 : 0);
+
+		if(current)
+			switch (scroll)
 			{
-				if (AltCtrl & 1)
-					current->increaseInner();
-				if (AltCtrl & 2)
-					current->increaseOuter();
+			case 1:
+				if (!AltCtrl)
+					current->increaseFactor();
+				else
+				{
+					if (AltCtrl & 1)
+						current->increaseInner();
+					if (AltCtrl & 2)
+						current->increaseOuter();
+				}
+				break;
+			case -1:
+				if (!AltCtrl)
+					current->decreaseFactor();
+				else
+				{
+					if (AltCtrl & 1)
+						current->decreaseInner();
+					if (AltCtrl & 2)
+						current->decreaseOuter();
+				}
+			default:
+				break;
 			}
-			break;
-		case -1:
-			if (!AltCtrl)
-				current->decreaseFactor();
-			else
-			{
-				if (AltCtrl & 1)
-					current->decreaseInner();
-				if (AltCtrl & 2)
-					current->decreaseOuter();
-			}
-		default:
-			break;
-		}
 		scroll = 0;
 
 
-		if (glfwGetKey(window.ptr(), GLFW_KEY_K))
+		if (glfwGetKey(window.ptr(), GLFW_KEY_K) == GLFW_PRESS)
 		{
 			if (!isKPressed)
 			{
@@ -192,7 +216,8 @@ int main()
 				auto angX = camera.angleX();
 				auto angY = camera.angleY();
 				std::cout << pos.x << " " << pos.y << " " << pos.z << " " << angX << " " << angY << "\n";*/
-				current->printFactor();
+				if (current)
+					current->printFactor();
 			}
 		}
 		else
